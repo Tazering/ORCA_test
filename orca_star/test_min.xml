@@ -1,0 +1,26 @@
+<root>
+  <map>
+    <width>5</width>
+    <height>5</height>
+    <cellsize>1.0</cellsize>
+    <grid>
+      <row>0 0 0 0 0</row>
+      <row>0 0 0 0 0</row>
+      <row>0 0 0 0 0</row>
+      <row>0 0 0 0 0</row>
+      <row>0 0 0 0 0</row>
+    </grid>
+  </map>
+  <agents>
+    <agent>
+      <id>0</id>
+      <startx>0.5</startx>
+      <starty>0.5</starty>
+      <goalx>4.5</goalx>
+      <goaly>4.5</goaly>
+      <radius>0.2</radius>
+      <maxspeed>1.0</maxspeed>
+      <sightradius>2.0</sightradius>
+    </agent>
+  </agents>
+</root>

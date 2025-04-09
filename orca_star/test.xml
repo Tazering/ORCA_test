@@ -1,0 +1,24 @@
+<root>
+  <map>
+    <width>5</width>
+    <height>5</height>
+    <cellsize>1.0</cellsize>
+    <grid>
+      <row>0 0 0 0 0</row>
+      <row>0 1 0 0 0</row>
+      <row>0 0 0 1 0</row>
+      <row>0 0 0 0 0</row>
+      <row>0 0 0 0 0</row>
+    </grid>
+  </map>
+  <agents number="2">
+    <agent id="0" start.xr="0.5" start.yr="0.5" goal.xr="4.5" goal.yr="4.5" size="0.2" movespeed="1.0" sightradius="2.0"/>
+    <agent id="1" start.xr="4.5" start.yr="4.5" goal.xr="0.5" goal.yr="0.5" size="0.2" movespeed="1.0" sightradius="2.0"/>
+  </agents>
+  <obstacles number="0">
+  </obstacles>
+  <algorithm>
+    <delta>0.1</delta>
+    <timestep>0.1</timestep>
+  </algorithm>
+</root>
