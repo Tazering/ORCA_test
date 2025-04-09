@@ -7,10 +7,6 @@
 #include "ROSAgent.h"
 #include "ros/ros.h"
 #include <orca_star/Init.h>
-
-#include <sstream>
-#include <orca_star/ORCAInput.h>
-#include <visualization_msgs/Marker.h>
 #include <orca_star/AgentState.h>
 
 class ROSAgentWrapper {
@@ -37,28 +33,39 @@ int main(int argc, char **argv) {
     ros::NodeHandle n;
     int i = 0;
 	ROS_INFO("Starting ROSAgent with id %d", i);	
-
     ros::param::get("~id", i);
-
 	ROS_INFO("Agent ID: %d", i);
 	ROSAgentWrapper wrapper(i);
 	ROS_INFO("ROSAgent initialized");
 
 	ros::ServiceClient client = n.serviceClient<orca_star::Init>("initServer");
-
 	ROS_INFO("ervice client created for /initServer");
 	orca_star::Init srv;
-	if (client.waitForExistence(ros::Duration(5.0))) {
+
+	bool service_called = false;
+	ros::Time start_time = ros::Time::now();
+	while(ros::ok() && !service_called && (ros::Time::now() - start_time).toSec() < 10.0) {
+		if (client.waitForExistence(ros::Duration(5.0))) {
+          
+    		ROS_INFO("Service /initServer exists, calling...");
+        	if (client.call(srv)) {
+        		ROS_INFO("Called /initServer successfully");
+        	} else {
+        		ROS_ERROR("Failed to call /initServer");
+			}
+     
+		} else {
+        	ROS_ERROR("Service /initServer not available");
+     	}
 		
-		ROS_INFO("Service /initServer exists, calling...");
-        if (client.call(srv)) {
-            ROS_INFO("Called /initServer successfully");
-        } else {
-            ROS_ERROR("Failed to call /initServer");
-        }
-    } else {
-        ROS_ERROR("Service /initServer not available");
-    }
+		ros::spinOnce();
+		ros::Duration(1.0).sleep();
+	}
+	
+	if(!service_called) {
+		ROS_ERROR("Service /initServer not available for agent %d after 10s, giving up", i);
+	}
+
 	ROS_INFO("Spinning...");
 	ros::spin();
 	return 0;
