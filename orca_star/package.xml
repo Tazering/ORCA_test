@@ -21,5 +21,4 @@
   <build_export_depend>visualization_msgs</build_export_depend>
   <build_export_depend>nav_msgs</build_export_depend> <!-- Add this -->
   <exec_depend>message_runtime</exec_depend>
-  <exec_depend>visualization_msgs</exec_depend>
 </package>

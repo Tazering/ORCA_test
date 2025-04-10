@@ -14,8 +14,6 @@ class ROSAgent {
 public:
     ROSAgent(size_t id);
     void DoStep(const orca_star::ORCAInput &msg);
-	size_t getId() const { return agentId; }	
-
 private:
     ros::NodeHandle n;
     ros::Publisher ROSAgentPub;

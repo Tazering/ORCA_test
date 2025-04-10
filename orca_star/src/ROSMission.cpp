@@ -6,14 +6,60 @@
 
 #include "ROSMission.h"
 
-ROSMission::ROSMission(const std::string &xmlPath) : stepsCount(0), initFlag(false) {
-    ROS_INFO("Received XML path: %s", xmlPath.c_str());
-    LoadXML(xmlPath);
-    ROSMissionPub = n.advertise<orca_star::AgentState>("/AgentStates", 10);
-    loopRate = new ros::Rate(1);  // Slow to 1 Hz
-    if (PrepareSimulation()) {
-        StartSimulation();
+
+ROSMission::ROSMission(std::string fileName, size_t agNum, int threashold , bool endOnFin)
+{
+    ROS_INFO("Loading XML: %s", fileName.c_str());
+	taskReader = new XMLReader(fileName);
+    ROS_INFO("XML loaded, parsing agents...");
+
+    ROS_DEBUG("Mission Init!");
+    agNumber = agNum;
+    agCount = 0;
+    agents = std::vector<Agent*>();
+
+    stepsCount = 0;
+    stepsTreshhold = threashold;
+    endOnFinish = endOnFin;
+
+    options = nullptr;
+    missionResult = Summary();
+    resultsLog = std::unordered_map<int, std::pair<bool, int>>();
+    resultsLog.reserve(agNumber);
+
+	if (!taskReader -> ReadData()) {
+		ROS_ERROR("Failed to read XML data");
+		throw std::runtime_error("XML parsing failed");	
+	}	
+
+	ROS_INFO("Data parsed, retrieving agents...");
+	if (!taskReader->GetAgents(agents, agNumber)) {
+        ROS_ERROR("Failed to retrieve agents");
+        throw std::runtime_error("Agent retrieval failed");
     }
+    
+	ROS_INFO("Agents retrieved, retrieving map...");
+    if (!taskReader->GetMap(&map)) {
+        ROS_ERROR("Failed to retrieve map");
+        throw std::runtime_error("Map retrieval failed");
+    }
+    
+	ROS_INFO("Map retrieved, retrieving options...");
+    if (!taskReader->GetEnvironmentOptions(&options)) {
+        ROS_ERROR("Failed to retrieve environment options");
+        throw std::runtime_error("Options retrieval failed");
+    }
+    
+	ROS_INFO("Initializing agentStateMsg with agNumber=%zu", agNumber);
+    agentStateMsg.pos.resize(agNumber);
+    agentStateMsg.vel.resize(agNumber);
+    agentStateMsg.rad.resize(agNumber);
+    ROS_INFO("AgentStateMsg initialized: pos=%zu, vel=%zu, rad=%zu", 
+             agentStateMsg.pos.size(), agentStateMsg.vel.size(), agentStateMsg.rad.size());
+
+    ROSMissionPub = n.advertise<orca_star::AgentState>("AgentStates", 1000);
+    loopRate = new ros::Rate(10);
+    ROSMissionSub = n.subscribe("AgentVelocities", 1000, &ROSMission::UpdateVelocity, this);
 }
 
 ROSMission::~ROSMission()
@@ -45,32 +91,28 @@ void ROSMission::StartSimulation()
 {
 	ROS_INFO("Entering StartSimulation...");
 
-    while (ros::ok() && !IsFinished()) {
-		
-		if(initFlag) {
-			UpdateState();
-			ROS_INFO("Updated state");
-		} else {
-			ROS_WARN("Waiting for initFlag to be set");
-		}
-		
+    ROS_DEBUG("Mission Start!");
+
+    while (ros::ok() && !IsFinished())
+    {
+        ROS_DEBUG("Mission step!");
+
+        UpdateState();
         GenerateAgentStateMsg();
 		ROS_INFO("Publishing AgentStateMsg: pos = %zu", agentStateMsg.pos.size());
         ROSMissionPub.publish(agentStateMsg);
-		
+		if (ROSMissionPub.getNumSubscribers() == 0) {
+			ROS_WARN("No subscribers to /AgentStates");
+		}		
+
         ros::spinOnce();
         stepsCount++;
 
         loopRate->sleep();
 
     }
+    ROS_DEBUG("Mission End!");
 	ROS_INFO("StartSimulation completed");
-	
-	while(ros::ok()) {
-		ROSMissionPub.publish(agentStateMsg);
-		ros::spinOnce();
-		loopRate -> sleep();
-	}
 }
 
 
@@ -120,9 +162,21 @@ bool ROSMission::PrepareSimulation()
 	}
 
     ROS_INFO("Data checks passed: %zu agents, map %p, options %p", agents.size(), map, options);
+
+    ROS_INFO("AgentStateMsg sizes: pos=%zu, vel=%zu, rad=%zu", 
+             agentStateMsg.pos.size(), agentStateMsg.vel.size(), agentStateMsg.rad.size());
+
+    ROS_INFO("Advertising initServer service...");
     initServer = n.advertiseService("initServer", &ROSMission::InitAgent, this);
     ROS_INFO("initServer advertised");
-	initFlag = false;
+	
+	// wait for subscribers
+	while (ROSMissionPub.getNumSubscribers() == 0 && ros::ok()) {
+		ROS_INFO("Waiting for subscribers to /AgentStates...");
+		ros::Duration(0.5).sleep();
+	}
+
+	initFlag = true;
     ROS_INFO("Simulation prepared successfully");
     return true;
 }
@@ -131,7 +185,15 @@ bool ROSMission::PrepareSimulation()
 
 bool ROSMission::InitAgent(orca_star::Init::Request &req, orca_star::Init::Response &res) {
 	ROS_INFO("InitAgent called");
+	if (!options) {
+		ROS_ERROR("Options null in InitAgent");
+		return false;
+	}
+    res.delta = options->delta;
+
+    agCount++;
 	initFlag = true;
+	ROS_INFO("InitAgent succeeded, agCount = %zu", agCount);
     return true;
 }
 

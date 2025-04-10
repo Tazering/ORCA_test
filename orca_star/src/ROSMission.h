@@ -39,7 +39,7 @@ class ROSMission
             \param threashold Simulation step threashold (default - no threashold)
             \param endOnFin End the simulation when the threshold is reached or when all agents reach their finish positions
         */
-        ROSMission(const std::string &xmlPath);
+        ROSMission(std::string fileName, size_t agNum, int threashold = -1, bool endOnFin = false);
 
         /*!
            \brief Default ROSMission destructor
